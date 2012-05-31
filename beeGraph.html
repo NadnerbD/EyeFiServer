@@ -1,0 +1,258 @@
+<html>
+	<head>
+		<title>Bee Graph</title>
+		<script type="text/javascript" src="eyefi/pictures.js"></script>
+		<script type="text/javascript">
+			var graph, ctx;
+			var margin = 12;
+			var dotRad = 3;
+			var exRad = 3;
+			var ranges = {
+				time: [Number.MAX_VALUE, 0], 
+				aT: [Number.MAX_VALUE, 0],
+				aL: [Number.MAX_VALUE, 0],
+				aH: [Number.MAX_VALUE, 0]
+			};
+			var selection = null;
+			var selectedLine;
+			function init() {
+				graph = document.getElementById("graph");
+				if(graph.getContext) {
+					ctx = graph.getContext("2d");
+					ctx.fillStyle = "#000000";
+					// determine the bounds of the graph
+					for(var i = 0; i < pictures.length; i++) {
+						var pic = pictures[i];
+						console.log(new Date(pic.time * 1000));
+						for(var name in ranges) {
+							if(pic[name] < ranges[name][0])
+								ranges[name][0] = pic[name];
+							if(pic[name] > ranges[name][1])
+								ranges[name][1] = pic[name];
+						}
+					}
+					console.log("min/max Temp: " + ranges.aT + 
+							" Humidity: " + ranges.aH +
+							" Light: " + ranges.aL +
+							" Time: " + ranges.time);
+
+					// adjust the time range to start 12 hours from the last picture
+					//ranges.time[0] = ranges.time[1] - 60 * 60 * 12;
+
+					drawAll();
+				}
+				graph.addEventListener("mousedown", startDrag);
+				graph.addEventListener("mousemove", hoverHandle);
+				graph.addEventListener("mousewheel", wheel);
+			}
+			function wheel(event) {
+				event.preventDefault();
+				var center = XToTime(event.offsetX);
+				if(event.wheelDelta < 0) {
+					// zoom out
+					ranges.time[0] -= center - ranges.time[0];
+					ranges.time[1] += ranges.time[1] - center;
+				}else{
+					// zoom in
+					ranges.time[0] += (center - ranges.time[0]) / 2;
+					ranges.time[1] -= (ranges.time[1] - center) / 2;
+				}
+				drawAll();
+			}
+			function drawAll() {
+				setupGraph(); // draws the borders and gridlines
+				drawLines(); // draws the data elements
+				drawSelectBox(); // draws the hovertext box
+			}
+			function drawLines() {
+				graphLine("aH", "#00FFFF"); // Humidity, Cyan
+				graphLine("aL", "#FFFF00"); // Light, Yellow
+				graphLine("aT", "#FF0000"); // Temp, Red
+			}
+			function drawSelectBox() {
+				// selection text
+				if(selection) {
+					ctx.font = "12px sans-serif";
+					var dateString = new Date(selection.time * 1000).toString().split(' ').slice(0, 5).join(' ');
+					var textWidth = ctx.measureText(dateString).width;
+					var x = timeToX(selection.time) - textWidth / 2;
+					var y = dataToY(selection, selectedLine);
+					if(y > graph.height / 2)
+						y -= 24;
+					else
+						y += 24;
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillRect(x - 3, y - 13, textWidth + 6, 30);
+					ctx.fillStyle = "#000000";
+					ctx.fillRect(x - 2, y - 12, textWidth + 4, 28);
+					var dataNames = {
+						aL: ["Light", ""],
+						aH: ["Humidity", "%"],
+						aT: ["Temperature", "\u00B0F"]
+					}
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillText(dateString, x, y);
+					ctx.fillText(
+						dataNames[selectedLine][0] + ": " +
+						selection[selectedLine] +
+						dataNames[selectedLine][1],
+					x, y + 12);
+				}
+			}
+			function setupGraph() {
+				// clear the canvas
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(0, 0, graph.width, graph.height);
+
+				ctx.lineWidth = 2;
+
+				ctx.strokeStyle = "#FFFFFF";
+
+				// vertical axis
+				ctx.beginPath();
+				ctx.moveTo(margin, graph.height - margin);
+				ctx.lineTo(margin, margin);
+				ctx.stroke();
+				ctx.closePath();
+
+				// horizontal axis
+				ctx.beginPath();	
+				ctx.moveTo(margin, graph.height - margin);
+				ctx.lineTo(graph.width - margin, graph.height - margin);
+				ctx.stroke();
+				ctx.closePath();
+
+				// time markings
+				var timeSpan = ranges.time[1] - ranges.time[0];
+				var smallestMarking;
+				var dayLen = 60 * 60 * 24;
+				var localOffset = 60 * 60 * 4;
+				var markTime = ranges.time[0] - (ranges.time[0] % dayLen) + localOffset;
+				while(markTime < ranges.time[1]) {
+					var markX = timeToX(markTime);
+					ctx.beginPath();
+					ctx.moveTo(markX, graph.height - margin);
+					ctx.lineTo(markX, graph.height);
+					ctx.stroke();
+					ctx.closePath();
+					ctx.fillStyle = "#FFFFFF";
+					ctx.font = "10px sans-serif";
+					ctx.fillText(new Date(markTime * 1000).toString().split(' ').slice(1, 3).join(' '), markX + 2, graph.height - 2);
+					markTime += dayLen;
+				}
+			}
+			function graphLine(name, color) {
+				ctx.strokeStyle = color;
+				ctx.beginPath()
+				var lastTime = 0;
+				for(var i = 0; i < pictures.length; i++) {
+					var pic = pictures[i];
+					x = timeToX(pic.time);
+					y = dataToY(pic, name);
+					// we don't connect the line if the samples are more than an hour apart
+					if(i == 0 || (pic.time - lastTime > 60 * 60))
+						ctx.moveTo(x, y);
+					else
+						ctx.lineTo(x, y);
+					lastTime = pic.time;
+				}
+				ctx.stroke();
+				ctx.closePath();
+				for(var i = 0; i < pictures.length; i++) {
+					var pic = pictures[i];
+					var expand = 0;
+					if(pic == selection && name == selectedLine)
+						expand = exRad;
+					x = timeToX(pic.time);
+					y = dataToY(pic, name);
+					ctx.fillStyle = "#000000";
+					ctx.beginPath();
+					ctx.arc(x, y, dotRad + expand, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.closePath();
+					ctx.fillStyle = color;
+					ctx.beginPath();
+					ctx.arc(x, y, dotRad - 1 + expand, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.closePath();
+				}
+			}
+			function scale(value, inRange, outRange) {
+				var frac = (value - inRange[0]) / (inRange[1] - inRange[0]);
+				return frac * (outRange[1] - outRange[0]) + outRange[0];
+			}
+			function timeToX(time) {
+				return scale(time, ranges.time, [margin, graph.width - margin]);
+			}
+			function dataToY(pic, attr) {
+				return scale(pic[attr], ranges[attr], [graph.height - margin, margin]);
+			}
+			function deltaXToDeltaTime(diff) {
+				return diff / (graph.width - margin * 2) * (ranges.time[1] - ranges.time[0]);
+			}
+			function XToTime(x) {
+				return scale(x, [margin, graph.width - margin], ranges.time);
+			}
+			function startDrag(event) {
+				if(selection) {
+					document.getElementById("picture").src = "eyefi/" + selection.name;
+					return;
+				}
+				var lastPos = [event.clientX, event.clientY];
+				function moveHandle(event) {
+					var diff = event.clientX - lastPos[0];
+					lastPos = [event.clientX, event.clientY];
+					var ofs = -deltaXToDeltaTime(diff);
+					// we adjust the time ranges that the graph is drawn between to affect scrolling
+					ranges.time[0] += ofs;
+					ranges.time[1] += ofs;
+					drawAll();
+				}
+				function upHandle(event) {
+					document.removeEventListener("mousemove", moveHandle, false);
+					document.removeEventListener("mouseup", upHandle, false);
+				}
+				document.addEventListener("mousemove", moveHandle);
+				document.addEventListener("mouseup", upHandle);
+			}
+			function hoverHandle(event) {
+				for(var i = 0; i < pictures.length; i++) {
+					var pic = pictures[i];
+					if(Math.abs(timeToX(pic.time) - event.offsetX) < dotRad + exRad) {
+						for(var name in pic) {
+							if(name == "time" || name == "name")
+								continue;
+							if(Math.abs(dataToY(pic, name) - event.offsetY) < dotRad + exRad) {
+								selection = pic;
+								selectedLine = name;
+								graph.style.cursor = "pointer";
+								drawAll();
+								return;
+							}
+						}
+					}
+				}
+				if(selection != null) {
+					selection = null;
+					graph.style.cursor = "move";
+					drawAll();
+				}
+			}
+		</script>
+		<style type="text/css">
+			body {
+				background-color: black;
+			}
+			#graph {
+				cursor: move;
+			}
+		</style>
+	</head>
+	<body onload="init()">
+		<canvas width="1000" height="300" id="graph">
+			Missing canvas support
+		</canvas>
+		<br/>
+		<img id="picture"/>
+	</body>
+</html>
