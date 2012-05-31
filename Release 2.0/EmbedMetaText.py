@@ -55,12 +55,28 @@ def embedMeta(jpgfile, pngfile):
             metaTimestamp = datetime.strptime(metaText[0:19], "%Y/%m/%d %H:%M:%S")
             atime = time.mktime(metaTimestamp.timetuple())
             os.utime(pngfile, (atime, atime))
+
+            meta = {'name': pngfile.rsplit("/", 1)[1], 'time': int(atime)}
+            args = metaText.split(' ')
+            for arg in args:
+                sargs = arg.split('=')
+                if(len(sargs) == 2):
+                    meta[sargs[0]] = float(sargs[1][0:-1])
+            return meta
         except:
             print "%s contains corrupted metadata timestamp" % jpgfile
 
 if __name__ == "__main__":
     location = sys.argv[1]
+    pictures = list()
     print "Searching for %s" % (location + '/*.JPG')
     for filename in glob.glob(location + '/*.JPG'):
-        embedMeta(filename, filename[0:-4]+".png")
+        meta = embedMeta(filename, filename[0:-4]+".png")
+        if(meta):
+            pictures.append(meta)
+    pictures.sort(key=lambda i: i['time'])
+    picList = open(location + "/pictures.js", "w")
+    picList.write("var pictures = %s;" % pictures)
+    picList.close()
+
 
