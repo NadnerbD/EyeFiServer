@@ -425,13 +425,19 @@ class EyeFiRequestHandler(BaseHTTPRequestHandler):
       eyeFiLogger.debug("Extracting TAR file " + tarFilePath)
       imageTarfile = tarfile.open(tarFilePath)
       imageNames = imageTarfile.getnames()     
-      imageTarfile.extractall(downloadLocation)
+      try:
+            imageTarfile.extractall(downloadLocation)
+
+            eyeFiLogger.debug("Closing TAR file " + tarFilePath)
+            imageTarfile.close()
+
+            eyeFiLogger.debug("Deleting TAR file " + tarFilePath)
+            os.remove(tarFilePath)
+      except:
+            eyeFiLogger.debug("Error while extracting TAR file" + tarFilePath)
 
       eyeFiLogger.debug("Closing TAR file " + tarFilePath)
       imageTarfile.close()
-
-      eyeFiLogger.debug("Deleting TAR file " + tarFilePath)
-      os.remove(tarFilePath)
 
       # Run a command on the file if specified
       if( 'ExecuteOnUpload' in self.server.eyeFiConfiguration['Global'] ):
