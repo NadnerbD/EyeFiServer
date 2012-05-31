@@ -15,6 +15,16 @@
 			};
 			var selection = null;
 			var selectedLine;
+			// time mark globals
+			var tickLens = [
+				60 * 60 * 24, // day
+				60 * 60 * 12, // half day
+				60 * 60 * 6, // quarter day
+				60 * 60, // hour
+				60 * 15, // 15 mins
+				60, // minute
+			];
+			var localOffset = 60 * 60 * 4; // GMT-4
 			function init() {
 				graph = document.getElementById("graph");
 				if(graph.getContext) {
@@ -123,26 +133,43 @@
 				ctx.closePath();
 
 				// time markings
-				var timeSpan = ranges.time[1] - ranges.time[0];
-				var smallestMarking;
-				var dayLen = 60 * 60 * 24;
-				var localOffset = 60 * 60 * 4;
-				var markTime = ranges.time[0] - (ranges.time[0] % dayLen) + localOffset;
-				while(markTime < ranges.time[1]) {
+				drawTicks(tickLens[0], [1, 3], 0);
+				for(var i = 1; deltaTimeToDeltaX(tickLens[i]) > 50 && i < tickLens.length; i++) {
+					drawTicks(tickLens[i], [4, 5], tickLens[i - 1]);
+				}
+			}
+			function drawTicks(tickLen, dateSlice, skip) {
+				var markTime = ranges.time[0] - (ranges.time[0] % tickLen) + localOffset;
+				while(markTime > ranges.time[0])
+					markTime -= tickLen;
+				for(; markTime < ranges.time[1]; markTime += tickLen) {
+					if((markTime - localOffset) % skip == 0)
+						continue;
 					var markX = timeToX(markTime);
+					ctx.strokeStyle = "#FFFFFF";
+					ctx.lineWidth = 2;
 					ctx.beginPath();
 					ctx.moveTo(markX, graph.height - margin);
 					ctx.lineTo(markX, graph.height);
 					ctx.stroke();
 					ctx.closePath();
+					ctx.strokeStyle = "#888888";
+					ctx.lineWidth = 1;
+					ctx.beginPath();
+					ctx.moveTo(markX, margin);
+					ctx.lineTo(markX, graph.height - margin);
+					ctx.stroke();
+					ctx.closePath();
 					ctx.fillStyle = "#FFFFFF";
 					ctx.font = "10px sans-serif";
-					ctx.fillText(new Date(markTime * 1000).toString().split(' ').slice(1, 3).join(' '), markX + 2, graph.height - 2);
-					markTime += dayLen;
+					var label = new Date(markTime * 1000).toString()
+						.split(' ').slice(dateSlice[0], dateSlice[1]).join(' ');
+					ctx.fillText(label, markX + 2, graph.height - 2);
 				}
 			}
 			function graphLine(name, color) {
 				ctx.strokeStyle = color;
+				ctx.lineWidth = 2;
 				ctx.beginPath()
 				var lastTime = 0;
 				for(var i = 0; i < pictures.length; i++) {
@@ -187,11 +214,14 @@
 			function dataToY(pic, attr) {
 				return scale(pic[attr], ranges[attr], [graph.height - margin, margin]);
 			}
+			function XToTime(x) {
+				return scale(x, [margin, graph.width - margin], ranges.time);
+			}
 			function deltaXToDeltaTime(diff) {
 				return diff / (graph.width - margin * 2) * (ranges.time[1] - ranges.time[0]);
 			}
-			function XToTime(x) {
-				return scale(x, [margin, graph.width - margin], ranges.time);
+			function deltaTimeToDeltaX(diff) {
+				return diff * (graph.width - margin * 2) / (ranges.time[1] - ranges.time[0]);
 			}
 			function startDrag(event) {
 				if(selection) {
