@@ -1,6 +1,9 @@
 <html>
 	<head>
 		<title>Bee Graph</title>
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 		<script type="text/javascript" src="eyefi/pictures.js"></script>
 		<script type="text/javascript">
 			var graph, ctx;
@@ -48,12 +51,59 @@
 
 					// adjust the time range to start 12 hours from the last picture
 					//ranges.time[0] = ranges.time[1] - 60 * 60 * 12;
+					//drawAll();
 
-					drawAll();
+					resize();
 				}
 				graph.addEventListener("mousedown", startDrag);
 				graph.addEventListener("mousemove", hoverHandle);
 				graph.addEventListener("mousewheel", wheel);
+				window.addEventListener("resize", resize);
+				// iOS event handlers
+				graph.addEventListener("touchstart", touchStart);
+				graph.addEventListener("touchmove", touchMove);
+				graph.addEventListener("touchend", touchEnd);
+				graph.addEventListener("touchcancel", touchCancel);
+			}
+			function touchStart(event) {
+				event.preventDefault();
+				lastTouches = [];
+				for(var i = 0; i < event.touches.length; i++)
+					lastTouches[i] = event.touches[i].pageX;
+			}
+			function touchMove(event) {
+				event.preventDefault(); // prevents iOS drag scrolling
+				if(event.touches.length == 1) {
+					// we have one touch: do a drag
+					var diff = event.touches[0].pageX - lastTouches[0];
+					var ofs = -deltaXToDeltaTime(diff);
+					// we adjust the time ranges that the graph is drawn between to affect scrolling
+					ranges.time[0] += ofs;
+					ranges.time[1] += ofs;
+				}else if(event.touches.length == 2 && lastTouches.length == 2) {
+					// we have two touches: drag-scale (ALGEBRA TO THE RESCUE)
+					var A = XToTime(lastTouches[0]);
+					var A2 = XToTime(event.touches[0].pageX);
+					var B = XToTime(lastTouches[1]);
+					var B2 = XToTime(event.touches[1].pageX);
+					var scale = (B2 - A2) / (B - A);
+					var offset = A2 - A * scale;
+					ranges.time[0] = (ranges.time[0] - offset) / scale;
+					ranges.time[1] = (ranges.time[1] - offset) / scale;
+				}
+				lastTouches = [];
+				for(var i = 0; i < event.touches.length; i++)
+					lastTouches[i] = event.touches[i].pageX;
+				drawAll();
+			}
+			function touchEnd(event) {
+			}
+			function touchCancel(event) {
+			}
+			function resize(event) {
+				graph.width = window.innerWidth;
+				graph.height = window.innerHeight;
+				drawAll();
 			}
 			function wheel(event) {
 				event.preventDefault();
@@ -142,6 +192,7 @@
 				var markTime = ranges.time[0] - (ranges.time[0] % tickLen) + localOffset;
 				while(markTime > ranges.time[0])
 					markTime -= tickLen;
+				markTime += tickLen;
 				for(; markTime < ranges.time[1]; markTime += tickLen) {
 					if((markTime - localOffset) % skip == 0)
 						continue;
@@ -224,6 +275,7 @@
 				return diff * (graph.width - margin * 2) / (ranges.time[1] - ranges.time[0]);
 			}
 			function startDrag(event) {
+				event.preventDefault(); // prevents browser from doing a selection
 				if(selection) {
 					document.getElementById("picture").src = "eyefi/" + selection.name;
 					return;
@@ -270,7 +322,10 @@
 			}
 		</script>
 		<style type="text/css">
-			body {
+			html, body {
+				width: 100%;
+				height: 100%;
+				margin: 0px;
 				background-color: black;
 			}
 			#graph {
