@@ -16,8 +16,11 @@
 				aL: [Number.MAX_VALUE, 0],
 				aH: [Number.MAX_VALUE, 0]
 			};
+			var shownImage = null;
 			var selection = null;
-			var selectedLine;
+			// iOS interface globals
+			var tapState = false;
+			var lastTouches = [];
 			// time mark globals
 			var tickLens = [
 				60 * 60 * 24, // day
@@ -65,40 +68,62 @@
 				graph.addEventListener("touchend", touchEnd);
 				graph.addEventListener("touchcancel", touchCancel);
 			}
-			function touchStart(event) {
-				event.preventDefault();
+			function saveTouches(touchList) {
 				lastTouches = [];
 				for(var i = 0; i < event.touches.length; i++)
-					lastTouches[i] = event.touches[i].pageX;
+					lastTouches[i] = {x: event.touches[i].pageX, y: event.touches[i].pageY};
+			}
+			function touchStart(event) {
+				event.preventDefault();
+				tapState = lastTouches.length == 0;
+				saveTouches();
 			}
 			function touchMove(event) {
 				event.preventDefault(); // prevents iOS drag scrolling
+				tapState = false;
 				if(event.touches.length == 1) {
 					// we have one touch: do a drag
-					var diff = event.touches[0].pageX - lastTouches[0];
+					var diff = event.touches[0].pageX - lastTouches[0].x;
 					var ofs = -deltaXToDeltaTime(diff);
 					// we adjust the time ranges that the graph is drawn between to affect scrolling
 					ranges.time[0] += ofs;
 					ranges.time[1] += ofs;
 				}else if(event.touches.length == 2 && lastTouches.length == 2) {
 					// we have two touches: drag-scale (ALGEBRA TO THE RESCUE)
-					var A = XToTime(lastTouches[0]);
+					var A = XToTime(lastTouches[0].x);
 					var A2 = XToTime(event.touches[0].pageX);
-					var B = XToTime(lastTouches[1]);
+					var B = XToTime(lastTouches[1].x);
 					var B2 = XToTime(event.touches[1].pageX);
 					var scale = (B2 - A2) / (B - A);
 					var offset = A2 - A * scale;
 					ranges.time[0] = (ranges.time[0] - offset) / scale;
 					ranges.time[1] = (ranges.time[1] - offset) / scale;
 				}
-				lastTouches = [];
-				for(var i = 0; i < event.touches.length; i++)
-					lastTouches[i] = event.touches[i].pageX;
+				saveTouches();
 				drawAll();
 			}
 			function touchEnd(event) {
+				if(lastTouches.length == 1 && tapState) {
+					// the last touch was a tap
+					if(overImage(lastTouches[0].x, lastTouches[0].y)) {
+						shownImage = null;
+						drawAll();
+						return;
+					}
+					var newSelection = dataPointAt(lastTouches[0].x, lastTouches[0].y, dotRad + exRad + 10);
+					if(newSelection && selection && newSelection.pic == selection.pic) {
+						showPic(selection.pic);
+					}else if(newSelection != selection) {
+						selection = newSelection;
+						drawAll();
+					}
+				}
+				saveTouches();
 			}
 			function touchCancel(event) {
+				// this is a funny special-case-y event that is fired when a touch is ended
+				// for a reason other than a finger leaving the screen
+				saveTouches();
 			}
 			function resize(event) {
 				graph.width = window.innerWidth;
@@ -123,6 +148,66 @@
 				setupGraph(); // draws the borders and gridlines
 				drawLines(); // draws the data elements
 				drawSelectBox(); // draws the hovertext box
+				drawImageOverlay(); // draws the box showing a selected image
+			}
+			function drawImageOverlay() {
+				if(shownImage) {
+					// shows the image centered in the viewport
+					// and scaled down if neccessary to fit
+					var scale = 1;
+					if(shownImage.width > graph.width - margin * 2) {
+						var xScale = (graph.width - margin * 2) / shownImage.width;
+						if(xScale < scale)
+							scale = xScale;
+					}
+					if(shownImage.height > graph.height - margin * 2) {
+						var yScale = (graph.height - margin * 2) / shownImage.height;
+						if(yScale < scale)
+							scale = yScale;
+					}
+					var x = graph.width / 2 - (shownImage.width * scale) / 2;
+					var y = graph.height / 2 - (shownImage.height * scale) / 2;
+					imageBox = [x, y, x + shownImage.width * scale, y + shownImage.height * scale];
+					// draw the image
+					ctx.save()
+					ctx.translate(x, y);
+					ctx.scale(scale, scale);
+					ctx.drawImage(shownImage, 0, 0);
+					ctx.restore();
+					// draw the close button
+					var bx = x + shownImage.width * scale;
+					ctx.fillStyle = "#FFFFFF";
+					ctx.beginPath();
+					ctx.arc(bx, y, margin, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.closePath();
+					ctx.fillStyle = "#880000";
+					ctx.beginPath();
+					ctx.arc(bx, y, margin - 1, 0, Math.PI * 2);
+					ctx.fill();
+					ctx.closePath();
+					ctx.strokeStyle = "#FFFFFF";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(bx - (margin / 2), y + (margin / 2));
+					ctx.lineTo(bx + (margin / 2), y - (margin / 2));
+					ctx.stroke();
+					ctx.closePath();
+					ctx.beginPath();
+					ctx.moveTo(bx + (margin / 2), y + (margin / 2));
+					ctx.lineTo(bx - (margin / 2), y - (margin / 2));
+					ctx.stroke();
+					ctx.closePath();
+				}
+			}
+			function overImage(x, y) {
+				return shownImage && (
+					x > imageBox[0] &&
+					x < imageBox[2] &&
+					y > imageBox[1] &&
+					y < imageBox[3] ||
+					(x - imageBox[2]) * (x - imageBox[2]) +
+					(y - imageBox[1]) * (y - imageBox[1]) < margin * margin);
 			}
 			function drawLines() {
 				graphLine("aH", "#00FFFF"); // Humidity, Cyan
@@ -133,10 +218,10 @@
 				// selection text
 				if(selection) {
 					ctx.font = "12px sans-serif";
-					var dateString = new Date(selection.time * 1000).toString().split(' ').slice(0, 5).join(' ');
+					var dateString = new Date(selection.pic.time * 1000).toString().split(' ').slice(0, 5).join(' ');
 					var textWidth = ctx.measureText(dateString).width;
-					var x = timeToX(selection.time) - textWidth / 2;
-					var y = dataToY(selection, selectedLine);
+					var x = timeToX(selection.pic.time) - textWidth / 2;
+					var y = dataToY(selection.pic, selection.line);
 					if(y > graph.height / 2)
 						y -= 24;
 					else
@@ -153,9 +238,9 @@
 					ctx.fillStyle = "#FFFFFF";
 					ctx.fillText(dateString, x, y);
 					ctx.fillText(
-						dataNames[selectedLine][0] + ": " +
-						selection[selectedLine] +
-						dataNames[selectedLine][1],
+						dataNames[selection.line][0] + ": " +
+						selection.pic[selection.line] +
+						dataNames[selection.line][1],
 					x, y + 12);
 				}
 			}
@@ -183,7 +268,8 @@
 				ctx.closePath();
 
 				// time markings
-				drawTicks(tickLens[0], [1, 3], 0);
+				if(deltaTimeToDeltaX(tickLens[0]) > 50)
+					drawTicks(tickLens[0], [1, 3], 0);
 				for(var i = 1; deltaTimeToDeltaX(tickLens[i]) > 50 && i < tickLens.length; i++) {
 					drawTicks(tickLens[i], [4, 5], tickLens[i - 1]);
 				}
@@ -239,7 +325,7 @@
 				for(var i = 0; i < pictures.length; i++) {
 					var pic = pictures[i];
 					var expand = 0;
-					if(pic == selection && name == selectedLine)
+					if(selection && pic == selection.pic && name == selection.line)
 						expand = exRad;
 					x = timeToX(pic.time);
 					y = dataToY(pic, name);
@@ -274,10 +360,35 @@
 			function deltaTimeToDeltaX(diff) {
 				return diff * (graph.width - margin * 2) / (ranges.time[1] - ranges.time[0]);
 			}
+			function dataPointAt(x, y, radius) {
+				for(var i = 0; i < pictures.length; i++) {
+					var pic = pictures[i];
+					if(Math.abs(timeToX(pic.time) - x) < radius) {
+						for(var name in pic) {
+							if(name == "time" || name == "name")
+								continue;
+							if(Math.abs(dataToY(pic, name) - y) < radius) {
+								return {pic: pic, line: name};
+							}
+						}
+					}
+				}
+				return null;
+			}
+			function showPic(pic) {
+				shownImage = new Image();
+				shownImage.onload = function () { drawAll(); }
+				shownImage.src = "eyefi/" + pic.name;
+			}
 			function startDrag(event) {
 				event.preventDefault(); // prevents browser from doing a selection
+				if(overImage(event.offsetX, event.offsetY)) {
+					shownImage = null;
+					drawAll();
+					return;
+				}
 				if(selection) {
-					document.getElementById("picture").src = "eyefi/" + selection.name;
+					showPic(selection.pic);
 					return;
 				}
 				var lastPos = [event.clientX, event.clientY];
@@ -298,24 +409,19 @@
 				document.addEventListener("mouseup", upHandle);
 			}
 			function hoverHandle(event) {
-				for(var i = 0; i < pictures.length; i++) {
-					var pic = pictures[i];
-					if(Math.abs(timeToX(pic.time) - event.offsetX) < dotRad + exRad) {
-						for(var name in pic) {
-							if(name == "time" || name == "name")
-								continue;
-							if(Math.abs(dataToY(pic, name) - event.offsetY) < dotRad + exRad) {
-								selection = pic;
-								selectedLine = name;
-								graph.style.cursor = "pointer";
-								drawAll();
-								return;
-							}
-						}
-					}
+				if(overImage(event.offsetX, event.offsetY)) {
+					graph.style.cursor = "pointer";
+					return;
+				}else{
+					graph.style.cursor = "move";
 				}
-				if(selection != null) {
-					selection = null;
+				var newSelection = dataPointAt(event.offsetX, event.offsetY, dotRad + exRad);
+				if(newSelection) {
+					selection = newSelection;
+					graph.style.cursor = "pointer";
+					drawAll();
+				}else if(selection) {
+					selection = newSelection;
 					graph.style.cursor = "move";
 					drawAll();
 				}
@@ -337,7 +443,5 @@
 		<canvas width="1000" height="300" id="graph">
 			Missing canvas support
 		</canvas>
-		<br/>
-		<img id="picture"/>
 	</body>
 </html>
