@@ -1,0 +1,8 @@
+# ignore python's bytecode files
+*.pyc
+# vi's backup files
+*.swp
+# the server logs
+*.log
+# the pictures directory
+Release 2.0/pictures
