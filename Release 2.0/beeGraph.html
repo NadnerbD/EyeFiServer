@@ -18,6 +18,9 @@
 			};
 			var shownImage = null;
 			var selection = null;
+			var imageBox = [0, 0, 0, 0];
+			var fwdBox = [0, 0, 0, 0];
+			var backBox = [0, 0, 0, 0];
 			// iOS interface globals
 			var tapState = false;
 			var lastTouches = [];
@@ -105,6 +108,16 @@
 			function touchEnd(event) {
 				if(lastTouches.length == 1 && tapState) {
 					// the last touch was a tap
+					if(overFwd(lastTouches[0].x, lastTouches[0].y)) {
+						var curIndex = pictures.indexOf(shownImage.meta);
+						showPic(pictures[curIndex + 1]);
+						return;
+					}
+					if(overBack(lastTouches[0].x, lastTouches[0].y)) {
+						var curIndex = pictures.indexOf(shownImage.meta);
+						showPic(pictures[curIndex - 1]);
+						return;
+					}
 					if(overImage(lastTouches[0].x, lastTouches[0].y)) {
 						shownImage = null;
 						drawAll();
@@ -152,6 +165,29 @@
 			}
 			function drawImageOverlay() {
 				if(shownImage) {
+					// draw an indicator on the graph showing the time of the current picture
+					var MarkX = timeToX(shownImage.meta.time);
+					ctx.strokeStyle = "#FF8800";
+					ctx.fillStyle = "#FF8800";
+					ctx.beginPath();
+					ctx.moveTo(MarkX, margin);
+					ctx.lineTo(MarkX, graph.height - margin);
+					ctx.stroke();
+					ctx.closePath();
+					// bottom triangle
+					ctx.beginPath();
+					ctx.moveTo(MarkX, graph.height - margin);
+					ctx.lineTo(MarkX + 10, graph.height);
+					ctx.lineTo(MarkX - 10, graph.height);
+					ctx.closePath();
+					ctx.fill();
+					// top triangle
+					ctx.beginPath();
+					ctx.moveTo(MarkX, margin);
+					ctx.lineTo(MarkX + 10, 0);
+					ctx.lineTo(MarkX - 10, 0);
+					ctx.closePath();
+					ctx.fill();
 					// shows the image centered in the viewport
 					// and scaled down if neccessary to fit
 					var scale = 1;
@@ -198,16 +234,54 @@
 					ctx.lineTo(bx - (margin / 2), y - (margin / 2));
 					ctx.stroke();
 					ctx.closePath();
+					// Draw forward and back buttons
+					ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+					var curIndex = pictures.indexOf(shownImage.meta);
+					if(curIndex > 0) {
+						// back button
+						backBox = [margin + 10, graph.height * 0.25, margin + 50, graph.height * 0.75];
+						ctx.beginPath();
+						ctx.moveTo(backBox[0], graph.height * 0.5);
+						ctx.lineTo(backBox[2], backBox[1]);
+						ctx.lineTo(backBox[2], backBox[3]);
+						ctx.closePath();
+						ctx.fill();
+					}
+					if(curIndex + 1 < pictures.length) {
+						// forward button
+						fwdBox = [graph.width - (margin + 50), graph.height * 0.25, graph.width - (margin + 10), graph.height * 0.75];
+						ctx.beginPath();
+						ctx.moveTo(fwdBox[2], graph.height * 0.5);
+						ctx.lineTo(fwdBox[0], fwdBox[1]);
+						ctx.lineTo(fwdBox[0], fwdBox[3]);
+						ctx.closePath();
+						ctx.fill();
+					}
 				}
 			}
+			function testBox(x, y, box) { // box format: [xm, ym, xM, yM]
+				return	x > box[0] &&
+					x < box[2] &&
+					y > box[1] &&
+					y < box[3];
+			}
+			function testCircle(x, y, pos, rad) {
+				return	(x - pos[0]) * (x - pos[0]) +
+					(y - pos[1]) * (y - pos[1]) < rad * rad;
+			}
+			function overFwd(x, y) {
+				return	shownImage &&
+					pictures.indexOf(shownImage.meta) + 1 < pictures.length && 
+					testBox(x, y, fwdBox);
+					
+			}
+			function overBack(x, y) {
+				return	shownImage && 
+					pictures.indexOf(shownImage.meta) > 0 && 
+					testBox(x, y, backBox);
+			}
 			function overImage(x, y) {
-				return shownImage && (
-					x > imageBox[0] &&
-					x < imageBox[2] &&
-					y > imageBox[1] &&
-					y < imageBox[3] ||
-					(x - imageBox[2]) * (x - imageBox[2]) +
-					(y - imageBox[1]) * (y - imageBox[1]) < margin * margin);
+				return shownImage && (testBox(x, y, imageBox) || testCircle(x, y, [imageBox[2], imageBox[1]], margin));
 			}
 			function drawLines() {
 				graphLine("aH", "#00FFFF"); // Humidity, Cyan
@@ -379,9 +453,20 @@
 				shownImage = new Image();
 				shownImage.onload = function () { drawAll(); }
 				shownImage.src = "eyefi/" + pic.name;
+				shownImage.meta = pic;
 			}
 			function startDrag(event) {
 				event.preventDefault(); // prevents browser from doing a selection
+				if(overFwd(event.offsetX, event.offsetY)) {
+					var curIndex = pictures.indexOf(shownImage.meta);
+					showPic(pictures[curIndex + 1]);
+					return;
+				}
+				if(overBack(event.offsetX, event.offsetY)) {
+					var curIndex = pictures.indexOf(shownImage.meta);
+					showPic(pictures[curIndex - 1]);
+					return;
+				}
 				if(overImage(event.offsetX, event.offsetY)) {
 					shownImage = null;
 					drawAll();
@@ -409,7 +494,9 @@
 				document.addEventListener("mouseup", upHandle);
 			}
 			function hoverHandle(event) {
-				if(overImage(event.offsetX, event.offsetY)) {
+				var x = event.offsetX;
+				var y = event.offsetY;
+				if(overImage(x, y) || overFwd(x, y) || overBack(x, y)) {
 					graph.style.cursor = "pointer";
 					return;
 				}else{
