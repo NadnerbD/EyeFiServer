@@ -28,8 +28,8 @@ def embedMeta(jpgfile, pngfile):
     metaText = arr[-1]
     
     # Now open the image to embed the metadata and output the new image as PNG
-    image = Image.open(jpgfile)
     try:
+    	image = Image.open(jpgfile)
         draw = ImageDraw.Draw(image)
     except:
         print "%s contains corrupted image" % jpgfile
