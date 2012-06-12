@@ -239,7 +239,12 @@
 					var curIndex = pictures.indexOf(shownImage.meta);
 					if(curIndex > 0) {
 						// back button
-						backBox = [margin + 10, graph.height * 0.25, margin + 50, graph.height * 0.75];
+						backBox = [
+							Math.max(imageBox[0] - 60, margin + 10),
+							graph.height * 0.25, 
+							Math.max(imageBox[0] - 60, margin + 10) + 40, 
+							graph.height * 0.75
+						];
 						ctx.beginPath();
 						ctx.moveTo(backBox[0], graph.height * 0.5);
 						ctx.lineTo(backBox[2], backBox[1]);
@@ -249,7 +254,12 @@
 					}
 					if(curIndex + 1 < pictures.length) {
 						// forward button
-						fwdBox = [graph.width - (margin + 50), graph.height * 0.25, graph.width - (margin + 10), graph.height * 0.75];
+						fwdBox = [
+							Math.min(graph.width - (margin + 10), imageBox[2] + 60) - 40, 
+							graph.height * 0.25, 
+							Math.min(graph.width - (margin + 10), imageBox[2] + 60), 
+							graph.height * 0.75
+						];
 						ctx.beginPath();
 						ctx.moveTo(fwdBox[2], graph.height * 0.5);
 						ctx.lineTo(fwdBox[0], fwdBox[1]);
