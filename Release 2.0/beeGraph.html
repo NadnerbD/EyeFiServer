@@ -4,8 +4,8 @@
 		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
-		<script type="text/javascript" src="eyefi/pictures.js"></script>
 		<script type="text/javascript">
+			var pictures = null;
 			var graph, ctx;
 			var margin = 12;
 			var dotRad = 3;
@@ -34,6 +34,17 @@
 				60, // minute
 			];
 			var localOffset = -60 * 60 * 4; // GMT-4
+			function fetch(pictureFile) {
+				var request = new XMLHttpRequest();
+				request.onreadystatechange = function () {
+					if(request.readyState == 4) {
+						pictures = JSON.parse(request.responseText);
+						init();
+					}
+				}
+				request.open("GET", pictureFile, true);
+				request.send();
+			}
 			function init() {
 				graph = document.getElementById("graph");
 				if(graph.getContext) {
@@ -553,7 +564,7 @@
 			}
 		</style>
 	</head>
-	<body onload="init()">
+	<body onload="fetch('eyefi/pictures.json')">
 		<canvas width="1000" height="300" id="graph">
 			Missing canvas support
 		</canvas>

@@ -4,6 +4,7 @@ import os
 import time
 import glob
 import sys
+import json
 
 ## EmbedMetaText.py
 ##
@@ -66,17 +67,29 @@ def embedMeta(jpgfile, pngfile):
         except:
             print "%s contains corrupted metadata timestamp" % jpgfile
 
+def picExists(name, pictures):
+    for pic in pictures:
+        if(pic["name"] == name):
+            return True
+    return False
+
 if __name__ == "__main__":
     location = sys.argv[1]
-    pictures = list()
+    try:
+        picFile = open(location + "/pictures.json", "r")
+        pictures = json.load(picFile)
+    except:
+        pictures = list()
     print "Searching for %s" % (location + '/*.JPG')
     for filename in glob.glob(location + '/*.JPG'):
+        if(picExists(filename.rsplit("/", 1)[1][0:-4]+".png", pictures)):
+            continue
         meta = embedMeta(filename, filename[0:-4]+".png")
         if(meta):
             pictures.append(meta)
     pictures.sort(key=lambda i: i['time'])
-    picList = open(location + "/pictures.js", "w")
-    picList.write("var pictures = %s;" % pictures)
+    picList = open(location + "/pictures.json", "w")
+    json.dump(pictures, picList)
     picList.close()
 
 
