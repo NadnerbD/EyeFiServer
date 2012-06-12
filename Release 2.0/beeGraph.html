@@ -385,6 +385,9 @@
 				var lastTime = 0;
 				for(var i = 0; i < pictures.length; i++) {
 					var pic = pictures[i];
+					// cull out-of-range data points
+					if(pic.time < ranges.time[0] || pic.time > ranges.time[1])
+						continue;
 					x = timeToX(pic.time);
 					y = dataToY(pic, name);
 					// we don't connect the line if the samples are more than an hour apart
@@ -398,6 +401,9 @@
 				ctx.closePath();
 				for(var i = 0; i < pictures.length; i++) {
 					var pic = pictures[i];
+					// cull out-of-range data points
+					if(pic.time < ranges.time[0] || pic.time > ranges.time[1])
+						continue;
 					var expand = 0;
 					if(selection && pic == selection.pic && name == selection.line)
 						expand = exRad;
