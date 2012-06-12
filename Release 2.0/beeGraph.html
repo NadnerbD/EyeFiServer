@@ -33,7 +33,7 @@
 				60 * 15, // 15 mins
 				60, // minute
 			];
-			var localOffset = 60 * 60 * 4; // GMT-4
+			var localOffset = -60 * 60 * 4; // GMT-4
 			function init() {
 				graph = document.getElementById("graph");
 				if(graph.getContext) {
@@ -55,9 +55,10 @@
 							" Light: " + ranges.aL +
 							" Time: " + ranges.time);
 
-					// adjust the time range to start 12 hours from the last picture
-					//ranges.time[0] = ranges.time[1] - 60 * 60 * 12;
-					//drawAll();
+					// adjust the time range to start showing the current day
+					var dayLen = 60 * 60 * 24;
+					ranges.time[1] += dayLen - ((ranges.time[1] + localOffset) % dayLen);
+					ranges.time[0] = ranges.time[1] - dayLen;
 
 					resize();
 				}
@@ -365,12 +366,12 @@
 				}
 			}
 			function drawTicks(tickLen, dateSlice, skip) {
-				var markTime = ranges.time[0] - (ranges.time[0] % tickLen) + localOffset;
-				while(markTime > ranges.time[0])
+				var markTime = ranges.time[0] - (ranges.time[0] % tickLen) - localOffset;
+				while(markTime >= ranges.time[0])
 					markTime -= tickLen;
 				markTime += tickLen;
 				for(; markTime < ranges.time[1]; markTime += tickLen) {
-					if((markTime - localOffset) % skip == 0)
+					if((markTime + localOffset) % skip == 0)
 						continue;
 					var markX = timeToX(markTime);
 					ctx.strokeStyle = "#FFFFFF";
