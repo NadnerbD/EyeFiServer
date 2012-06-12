@@ -404,7 +404,11 @@
 					var pic = pictures[i];
 					// cull out-of-range data points
 					if(pic.time < ranges.time[0] || pic.time > ranges.time[1])
-						continue;
+						if( // don't point if it is directly connected to an in-range point
+							!(i - 1 > 0 && pictures[i - 1].time < ranges.time[1]) && 
+							!(i + 1 < pictures.length && pictures[i + 1].time > ranges.time[0])
+						)
+							continue;
 					x = timeToX(pic.time);
 					y = dataToY(pic, name);
 					// we don't connect the line if the samples are more than an hour apart
