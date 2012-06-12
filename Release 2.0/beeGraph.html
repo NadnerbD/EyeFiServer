@@ -123,24 +123,20 @@
 					if(overFwd(lastTouches[0].x, lastTouches[0].y)) {
 						var curIndex = pictures.indexOf(shownImage.meta);
 						showPic(pictures[curIndex + 1]);
-						return;
-					}
-					if(overBack(lastTouches[0].x, lastTouches[0].y)) {
+					}else if(overBack(lastTouches[0].x, lastTouches[0].y)) {
 						var curIndex = pictures.indexOf(shownImage.meta);
 						showPic(pictures[curIndex - 1]);
-						return;
-					}
-					if(overImage(lastTouches[0].x, lastTouches[0].y)) {
+					}else if(overImage(lastTouches[0].x, lastTouches[0].y)) {
 						shownImage = null;
 						drawAll();
-						return;
-					}
-					var newSelection = dataPointAt(lastTouches[0].x, lastTouches[0].y, dotRad + exRad + 10);
-					if(newSelection && selection && newSelection.pic == selection.pic) {
-						showPic(selection.pic);
-					}else if(newSelection != selection) {
-						selection = newSelection;
-						drawAll();
+					}else{
+						var newSelection = dataPointAt(lastTouches[0].x, lastTouches[0].y, dotRad + exRad + 10);
+						if(newSelection && selection && newSelection.pic == selection.pic) {
+							showPic(selection.pic);
+						}else if(newSelection != selection) {
+							selection = newSelection;
+							drawAll();
+						}
 					}
 				}
 				saveTouches();
