@@ -5,8 +5,10 @@
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black" />
 		<script type="text/javascript">
+		function Graph(pictureFile) {
 			var pictures = null;
-			var graph, ctx;
+			var graph = document.createElement("canvas");
+			var ctx;
 			var margin = 12;
 			var dotRad = 3;
 			var exRad = 3;
@@ -34,7 +36,7 @@
 				60, // minute
 			];
 			var localOffset = -60 * 60 * 4; // GMT-4
-			function fetch(pictureFile) {
+			function fetch() {
 				var request = new XMLHttpRequest();
 				request.onreadystatechange = function () {
 					if(request.readyState == 4) {
@@ -46,7 +48,6 @@
 				request.send();
 			}
 			function init() {
-				graph = document.getElementById("graph");
 				if(graph.getContext) {
 					ctx = graph.getContext("2d");
 					ctx.fillStyle = "#000000";
@@ -71,12 +72,12 @@
 					ranges.time[1] += dayLen - ((ranges.time[1] + localOffset) % dayLen);
 					ranges.time[0] = ranges.time[1] - dayLen;
 
-					resize();
+					drawAll();
+					graph.oninit();
 				}
 				graph.addEventListener("mousedown", startDrag);
 				graph.addEventListener("mousemove", hoverHandle);
 				graph.addEventListener("mousewheel", wheel);
-				window.addEventListener("resize", resize);
 				// iOS event handlers
 				graph.addEventListener("touchstart", touchStart);
 				graph.addEventListener("touchmove", touchMove);
@@ -145,11 +146,6 @@
 				// this is a funny special-case-y event that is fired when a touch is ended
 				// for a reason other than a finger leaving the screen
 				saveTouches();
-			}
-			function resize(event) {
-				graph.width = window.innerWidth;
-				graph.height = window.innerHeight;
-				drawAll();
 			}
 			function wheel(event) {
 				event.preventDefault();
@@ -548,22 +544,37 @@
 					drawAll();
 				}
 			}
+			// start up the graph by fetching the data 
+			fetch();
+			// we expose our functionality through methods on the html element
+			graph.redraw = function (event) {
+				drawAll();
+			}
+			graph.oninit = function () {}
+			return graph;
+		}
+		</script>
+		<script type="text/javascript">
+			function addGraph() {
+				var graph = Graph('eyefi/pictures.json');
+				function resize(event) {
+					graph.width = window.innerWidth;
+					graph.height = window.innerHeight;
+					graph.redraw();
+				}
+				graph.oninit = resize;
+				document.body.appendChild(graph);
+				window.addEventListener("resize", resize);
+			}
 		</script>
 		<style type="text/css">
 			html, body {
 				width: 100%;
 				height: 100%;
 				margin: 0px;
-				background-color: black;
-			}
-			#graph {
-				cursor: move;
 			}
 		</style>
 	</head>
-	<body onload="fetch('eyefi/pictures.json')">
-		<canvas width="1000" height="300" id="graph">
-			Missing canvas support
-		</canvas>
+	<body onload="addGraph()">
 	</body>
 </html>
