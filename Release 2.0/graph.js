@@ -107,6 +107,12 @@ function Graph(pictureFile) {
 			var offset = A2 - A * scale;
 			ranges.time[0] = (ranges.time[0] - offset) / scale;
 			ranges.time[1] = (ranges.time[1] - offset) / scale;
+			if(ranges.time[0] > ranges.time[1]) {
+				// if we've gotten a negative scale, swap the ranges
+				var temp = ranges.time[0];
+				ranges.time[0] = ranges.time[1];
+				ranges.time[1] = temp;
+			}
 		}
 		saveTouches();
 		drawAll();
