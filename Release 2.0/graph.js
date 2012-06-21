@@ -227,6 +227,14 @@ function Graph(pictureFile) {
 			ctx.scale(scale, scale);
 			ctx.drawImage(shownImage, 0, 0);
 			ctx.restore();
+			// draw the image url
+			ctx.font = "10px sans-serif";
+			var tm = ctx.measureText(shownImage.src);
+			var tx = x - tm.width / 2 + shownImage.width * scale / 2;
+			ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+			ctx.fillRect(tx, y + 1, tm.width + 2, -12);
+			ctx.fillStyle = "#FFFFFF";
+			ctx.fillText(shownImage.src, tx, y - 2);
 			// draw the close button
 			var bx = x + shownImage.width * scale;
 			ctx.fillStyle = "#FFFFFF";
@@ -369,8 +377,10 @@ function Graph(pictureFile) {
 		ctx.closePath();
 
 		// time markings
+		// day ticks
 		if(deltaTimeToDeltaX(tickLens[0]) > 50)
 			drawTicks(tickLens[0], [1, 3], 0);
+		// half day, quarter day, hour, 15 min, and 1 min ticks
 		for(var i = 1; deltaTimeToDeltaX(tickLens[i]) > 50 && i < tickLens.length; i++) {
 			drawTicks(tickLens[i], [4, 5], tickLens[i - 1]);
 		}
