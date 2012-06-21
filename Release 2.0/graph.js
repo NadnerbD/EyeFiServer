@@ -1,7 +1,7 @@
 function Graph(pictureFile) {
 	var pictures = null;
 	var graph = document.createElement("canvas");
-	var ctx;
+	var ctx = null;
 	var margin = 12;
 	var dotRad = 3;
 	var exRad = 3;
@@ -41,41 +41,49 @@ function Graph(pictureFile) {
 		request.send();
 	}
 	function init() {
-		if(graph.getContext) {
-			ctx = graph.getContext("2d");
-			ctx.fillStyle = "#000000";
-			// determine the bounds of the graph
-			for(var i = 0; i < pictures.length; i++) {
-				var pic = pictures[i];
-				console.log(new Date(pic.time * 1000));
-				for(var name in ranges) {
-					if(pic[name] < ranges[name][0])
-						ranges[name][0] = pic[name];
-					if(pic[name] > ranges[name][1])
-						ranges[name][1] = pic[name];
-				}
+		// determine the bounds of the graph
+		for(var i = 0; i < pictures.length; i++) {
+			var pic = pictures[i];
+			for(var name in ranges) {
+				if(name == "time" && ctx != null)
+					continue;
+				if(pic[name] < ranges[name][0])
+					ranges[name][0] = pic[name];
+				if(pic[name] > ranges[name][1])
+					ranges[name][1] = pic[name];
 			}
-			console.log("min/max Temp: " + ranges.aT + 
-					" Humidity: " + ranges.aH +
-					" Light: " + ranges.aL +
-					" Time: " + ranges.time);
-
+		}
+		console.log("total pictures: " + pictures.length);
+		console.log("min/max Temp: " + ranges.aT + 
+				" Humidity: " + ranges.aH +
+				" Light: " + ranges.aL +
+				" Time: " + ranges.time);
+		// if we haven't set up the canvas yet
+		if(ctx == null) {
+			if(graph.getContext) {
+				ctx = graph.getContext("2d");
+				ctx.fillStyle = "#000000";
+				graph.addEventListener("mousedown", startDrag);
+				graph.addEventListener("mousemove", hoverHandle);
+				graph.addEventListener("mousewheel", wheel);
+				// iOS event handlers
+				graph.addEventListener("touchstart", touchStart);
+				graph.addEventListener("touchmove", touchMove);
+				graph.addEventListener("touchend", touchEnd);
+				graph.addEventListener("touchcancel", touchCancel);
+			}else{
+				console.log("Could not get 2D rendering context");
+				return;
+			}
 			// adjust the time range to start showing the current day
 			var dayLen = 60 * 60 * 24;
 			ranges.time[1] += dayLen - ((ranges.time[1] + localOffset) % dayLen);
 			ranges.time[0] = ranges.time[1] - dayLen;
-
-			drawAll();
+			// call the init event handler
 			graph.oninit();
 		}
-		graph.addEventListener("mousedown", startDrag);
-		graph.addEventListener("mousemove", hoverHandle);
-		graph.addEventListener("mousewheel", wheel);
-		// iOS event handlers
-		graph.addEventListener("touchstart", touchStart);
-		graph.addEventListener("touchmove", touchMove);
-		graph.addEventListener("touchend", touchEnd);
-		graph.addEventListener("touchcancel", touchCancel);
+		// draw the graph
+		drawAll();
 	}
 	function saveTouches(touchList) {
 		lastTouches = [];
@@ -545,10 +553,11 @@ function Graph(pictureFile) {
 	}
 	// start up the graph by fetching the data 
 	fetch();
+	// begin fetching graph data every 5 minutes
+	setInterval(fetch, 1000 * 60 * 5);
 	// we expose our functionality through methods on the html element
-	graph.redraw = function (event) {
-		drawAll();
-	}
+	graph.redraw = function (event) { drawAll(); }
+	graph.fetch = function (event) { fetch(); }
 	graph.oninit = function () {}
 	return graph;
 }
