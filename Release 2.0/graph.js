@@ -45,6 +45,7 @@ function Graph(pictureFile) {
 		for(var i = 0; i < pictures.length; i++) {
 			var pic = pictures[i];
 			for(var name in ranges) {
+				// don't move our viewport if we've started drawing already
 				if(name == "time" && ctx != null)
 					continue;
 				if(pic[name] < ranges[name][0])
@@ -81,6 +82,15 @@ function Graph(pictureFile) {
 			ranges.time[0] = ranges.time[1] - dayLen;
 			// call the init event handler
 			graph.oninit();
+		}else if(shownImage) {
+			// the shown image metadata will no longer be valid for equality
+			// we need to find it in the new picture manifest
+			for(var i = 0; i < pictures.length; i++) {
+				if(pictures[i].name == shownImage.meta.name) {
+					shownImage.meta = pictures[i];
+					break;
+				}
+			}
 		}
 		// draw the graph
 		drawAll();
