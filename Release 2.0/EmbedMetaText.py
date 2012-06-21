@@ -6,6 +6,7 @@ import glob
 import sys
 import json
 import fcntl
+import shutil
 
 ## EmbedMetaText.py
 ##
@@ -27,6 +28,7 @@ def embedMeta(jpgfile, pngfile):
     # in case '###' happens to randomly occur in the file, take the last item of the split
     if (len(arr) < 2) or (len(arr[-1]) > 80):
         print "%s does not contain meta text" % jpgfile
+        shutil.move(jpgfile, jpgfile.rsplit("/", 1)[0] + "/corrupt/")
         return
     metaText = arr[-1]
     
@@ -36,6 +38,7 @@ def embedMeta(jpgfile, pngfile):
         draw = ImageDraw.Draw(image)
     except:
         print "%s contains corrupted image" % jpgfile
+        shutil.move(jpgfile, jpgfile.rsplit("/", 1)[0] + "/corrupt/")
     else:
         myFontSize = 18
         myFont = ImageFont.truetype("CONSOLA.TTF", myFontSize)
@@ -68,6 +71,7 @@ def embedMeta(jpgfile, pngfile):
             return meta
         except:
             print "%s contains corrupted metadata timestamp" % jpgfile
+            shutil.move(jpgfile, jpgfile.rsplit("/", 1)[0] + "/corrupt/")
 
 def picExists(name, pictures):
     for pic in pictures:
