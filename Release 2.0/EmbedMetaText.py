@@ -5,6 +5,7 @@ import time
 import glob
 import sys
 import json
+import fcntl
 
 ## EmbedMetaText.py
 ##
@@ -13,6 +14,7 @@ import json
 ##
 ## Original implementation by Brendan Dorr.
 ## Changes by Gene Dorr.
+## More changes by Brendan Dorr.
 
 def embedMeta(jpgfile, pngfile):
     # First, open the image just to extract the metadata
@@ -78,8 +80,12 @@ if __name__ == "__main__":
     try:
         picFile = open(location + "/pictures.json", "r")
         pictures = json.load(picFile)
-    except:
+        picFile.close()
+    except Exception as error:
+        print error
         pictures = list()
+    picList = open(location + "/pictures.json", "w")
+    fcntl.flock(picList, fcntl.LOCK_EX)
     print "Searching for %s" % (location + '/*.JPG')
     for filename in glob.glob(location + '/*.JPG'):
         if(picExists(filename.rsplit("/", 1)[1][0:-4]+".png", pictures)):
@@ -88,8 +94,8 @@ if __name__ == "__main__":
         if(meta):
             pictures.append(meta)
     pictures.sort(key=lambda i: i['time'])
-    picList = open(location + "/pictures.json", "w")
     json.dump(pictures, picList)
+    fcntl.flock(picList, fcntl.LOCK_UN)
     picList.close()
 
 
