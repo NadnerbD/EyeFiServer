@@ -182,8 +182,8 @@ function Graph(pictureFile) {
 		setupGraph(); // draws the borders and gridlines
 		drawLines(); // draws the data elements
 		drawSelectBox(); // draws the hovertext box
+		drawTimeMarker(new Date().getTime() / 1000, "#00FF00"); // draw a marker for the current time
 		drawImageOverlay(); // draws the box showing a selected image
-		drawTimeMarker(new Date().getTime() / 1000, "#00FF00");
 	}
 	function drawTimeMarker(time, color) {
 		var MarkX = timeToX(time);
