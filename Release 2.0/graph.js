@@ -179,12 +179,6 @@ function Graph(pictureFile) {
 		drawAll();
 	}
 	function drawAll() {
-		// if the time of the picture is out of range, recenter the viewport around the picture
-		if(shownImage && (shownImage.meta.time < ranges.time[0] || shownImage.meta.time > ranges.time[1])) {
-			var timeRange = ranges.time[1] - ranges.time[0];
-			ranges.time[0] = shownImage.meta.time - (timeRange / 2);
-			ranges.time[1] = shownImage.meta.time + (timeRange / 2);
-		}
 		setupGraph(); // draws the borders and gridlines
 		drawLines(); // draws the data elements
 		drawSelectBox(); // draws the hovertext box
@@ -512,6 +506,12 @@ function Graph(pictureFile) {
 		return null;
 	}
 	function showPic(pic) {
+		// if the time of the picture is out of range, recenter the viewport around the picture
+		if(pic.time < ranges.time[0] || pic.time > ranges.time[1]) {
+			var timeRange = ranges.time[1] - ranges.time[0];
+			ranges.time[0] = pic.time - (timeRange / 2);
+			ranges.time[1] = pic.time + (timeRange / 2);
+		}
 		shownImage = new Image();
 		shownImage.onload = function () { drawAll(); }
 		shownImage.src = "eyefi/" + pic.name;
