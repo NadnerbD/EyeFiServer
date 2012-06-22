@@ -189,32 +189,36 @@ function Graph(pictureFile) {
 		drawLines(); // draws the data elements
 		drawSelectBox(); // draws the hovertext box
 		drawImageOverlay(); // draws the box showing a selected image
+		drawTimeMarker(new Date().getTime() / 1000, "#00FF00");
+	}
+	function drawTimeMarker(time, color) {
+		var MarkX = timeToX(time);
+		ctx.strokeStyle = color;
+		ctx.fillStyle = color;
+		ctx.beginPath();
+		ctx.moveTo(MarkX, 0);
+		ctx.lineTo(MarkX, graph.height);
+		ctx.stroke();
+		ctx.closePath();
+		// bottom triangle
+		ctx.beginPath();
+		ctx.moveTo(MarkX, graph.height - margin);
+		ctx.lineTo(MarkX + 10, graph.height);
+		ctx.lineTo(MarkX - 10, graph.height);
+		ctx.closePath();
+		ctx.fill();
+		// top triangle
+		ctx.beginPath();
+		ctx.moveTo(MarkX, margin);
+		ctx.lineTo(MarkX + 10, 0);
+		ctx.lineTo(MarkX - 10, 0);
+		ctx.closePath();
+		ctx.fill();
 	}
 	function drawImageOverlay() {
 		if(shownImage) {
 			// draw an indicator on the graph showing the time of the current picture
-			var MarkX = timeToX(shownImage.meta.time);
-			ctx.strokeStyle = "#FF8800";
-			ctx.fillStyle = "#FF8800";
-			ctx.beginPath();
-			ctx.moveTo(MarkX, margin);
-			ctx.lineTo(MarkX, graph.height - margin);
-			ctx.stroke();
-			ctx.closePath();
-			// bottom triangle
-			ctx.beginPath();
-			ctx.moveTo(MarkX, graph.height - margin);
-			ctx.lineTo(MarkX + 10, graph.height);
-			ctx.lineTo(MarkX - 10, graph.height);
-			ctx.closePath();
-			ctx.fill();
-			// top triangle
-			ctx.beginPath();
-			ctx.moveTo(MarkX, margin);
-			ctx.lineTo(MarkX + 10, 0);
-			ctx.lineTo(MarkX - 10, 0);
-			ctx.closePath();
-			ctx.fill();
+			drawTimeMarker(shownImage.meta.time, "#FF8800");
 			// shows the image centered in the viewport
 			// and scaled down if neccessary to fit
 			var scale = 1;
